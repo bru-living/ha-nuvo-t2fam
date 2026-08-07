@@ -1,0 +1,12 @@
+{
+  "title": "NuVo NV-T2FAM",
+  "config": {
+    "step": {
+      "user": {"title": "Choose connection type", "data": {"connection_type": "Connection type"}, "data_description": {"connection_type": "TCP works with raw serial bridges such as Global Caché; serial uses a local device path."}},
+      "connection": {"title": "Connect to the tuner", "data": {"host": "Host", "port": "Port", "serial_path": "Serial device path", "tuner": "Tuner"}},
+      "reconfigure": {"title": "Change tuner connection", "description": "The new endpoint will be tested by requesting the NV-T2FAM version before it is saved.", "data": {"host": "Host", "port": "Port", "serial_path": "Serial device path", "tuner": "Tuner"}}
+    },
+    "error": {"cannot_connect": "Unable to connect or no valid version response was received", "wrong_device": "The endpoint did not identify itself as a NuVo NV-T2FAM", "unknown": "Unexpected error"},
+    "abort": {"already_configured": "A NuVo NV-T2FAM is already configured", "reconfigure_successful": "The connection was updated successfully"}
+  }
+}
