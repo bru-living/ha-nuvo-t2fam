@@ -1,13 +1,13 @@
 {
   "domain": "nuvo_t2fam",
   "name": "NuVo NV-T2FAM",
-  "version": "1.8.1",
-  "documentation": "https://github.com/bru-living/ha-nuvo-t2fam",
-  "issue_tracker": "https://github.com/bru-living/ha-nuvo-t2fam/issues",
+  "codeowners": ["@invalidangel23"],
   "config_flow": true,
-  "single_config_entry": true,
+  "documentation": "https://github.com/bru-living/ha-nuvo-t2fam",
   "integration_type": "device",
   "iot_class": "local_push",
+  "issue_tracker": "https://github.com/bru-living/ha-nuvo-t2fam/issues",
   "requirements": ["pyserial-asyncio-fast==0.16"],
-  "codeowners": ["@invalidangel23"]
+  "single_config_entry": true,
+  "version": "1.8.1"
 }
