@@ -23,6 +23,12 @@ def test_format_frequency():
     assert format_frequency(101.15) == "101.15"
 
 
+def test_tune_step_commands():
+    connection = NuvoConnection({"connection_type": "serial"}, "A", lambda: None)
+    assert connection.command("TUNE+") == b"*T'A'TUNE+\r"
+    assert connection.command("TUNE-") == b"*T'A'TUNE-\r"
+
+
 def test_parse_frequency_and_ignore_other_tuner():
     state = TunerState()
     assert parse_response("#T'A'ON,FM99.9", "A", state)

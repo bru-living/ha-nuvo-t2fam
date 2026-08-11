@@ -7,20 +7,73 @@
 
 A local, UI-configured custom integration for **one tuner (A or B)** of the NuVo NV-T2FAM. It intentionally supports FM only. It does not create AM, Sirius, DAB, or second-tuner entities.
 
-Version 1.8.1 expands live diagnostics with the connection type, endpoint and full serial settings.
+## Screenshots
+
+### Device controls and connection diagnostics
+
+![NuVo NV-T2FAM device page showing power, frequency, seek and preset controls](docs/images/device-overview.png)
+
+### Media player details
+
+![NuVo NV-T2FAM media player showing the current FM frequency and preset controls](docs/images/media-player-details.png)
+
+The current release also adds a preset/source selector to the media-player details view. Home Assistant displays controls according to the available space and frontend version.
 
 ## Features
 
-- Raw serial-over-TCP (including suitably configured Global Caché bridges)
-- Local serial device at 57600 baud, 8N1
-- Power/source control, direct FM tuning, seek up/down, preset next/previous
-- Direct dropdown selection of presets 1-20 in preset bank 1
-- Automatic preset names from the tuner (for example, `5: Radio Nova`)
-- Current frequency, RDS station name, and RDS radio text
-- Separate Home Assistant sensors for frequency, RDS metadata, and device version
-- Diagnostic connection-status sensor with response timestamps, reconnect count, and last error
-- Unsolicited status parsing, automatic reconnect with backoff, and diagnostics
-- Startup `*VER` check that requires an NV-T2FAM response
+### Tuner controls
+
+| Home Assistant entity | What it provides |
+| --- | --- |
+| **Media player** | Power on/off, current tuner state, current frequency, RDS station name and radio text. Previous/next selects the previous/next preset, and the source selector provides direct access to presets 1-20. Numeric `media_player.play_media` calls tune directly to an FM frequency. |
+| **FM frequency number** | Direct tuning from 87.50 to 108.00 MHz in 0.01 MHz steps. |
+| **Preset select** | Direct selection of all 20 presets in preset bank 1. Learned tuner descriptions are shown as friendly names, for example `5: Radio Nova`. |
+| **Control buttons** | Power on/off, tune up/down by one FM step, seek forward/backward to the next station, and next/previous preset. Seek buttons use fast-forward/rewind icons; preset buttons use next/previous icons. |
+| **State sensors** | Current FM frequency, current preset number, preset name, RDS station name and RDS radio text. |
+| **Diagnostic sensors** | Device firmware/hardware version and live connection status. |
+
+When a station has no RDS, the media player card falls back to the preset name or the current FM frequency instead of showing a blank title.
+
+The controls deliberately distinguish between:
+
+- **Tune up/down**: move by one tuner frequency step using `TUNE+` or `TUNE-`.
+- **Seek forward/backward**: scan to the next receivable FM station using `SEEK+` or `SEEK-`.
+- **Previous/next**: move through the tuner's stored presets using `PRESET-` or `PRESET+`.
+
+### RDS and preset handling
+
+- Parses both command responses and unsolicited tuner updates.
+- Shows the RDS station name and radio text on the media player and as separate sensors.
+- Falls back to the learned preset name or exact FM frequency when a station supplies no RDS.
+- Polls RDS repeatedly after tuning, seeking or changing preset because some stations and tuners take time to return metadata.
+- Keeps valid RDS data when the tuner briefly returns an empty response.
+- Caches RDS by frequency so known station information can be restored when returning to a station during rapid preset changes.
+- Learns preset descriptions as each preset is tuned and uses them as friendly names in the preset dropdown.
+- Updates preset state immediately while waiting for the tuner response, making repeated preset changes responsive.
+
+### Connections and reliability
+
+- UI configuration for either a raw serial-over-TCP bridge or a local serial device.
+- Compatible with transparent TCP serial bridges, including suitably configured Global Caché devices.
+- Uses the NV-T2FAM serial settings: ASCII, 57600 baud, 8 data bits, no parity, 1 stop bit, no flow control, and carriage-return command termination.
+- Tests the endpoint with `*VER` during initial setup, reconfiguration and Home Assistant startup, and requires an NV-T2FAM version response.
+- Reconfigure flow for changing TCP host/port, serial device path, or selected tuner without removing the integration.
+- Serialized and paced command writes for reliable operation through slower serial-over-TCP bridges.
+- Automatic reconnection with backoff, response monitoring, and silent-connection detection.
+
+### Diagnostics and troubleshooting
+
+- A connection-status sensor remains available while disconnected.
+- Live diagnostic attributes include connection type, TCP host/port or serial path, tuner, serial settings, connection timestamps, last response, reconnect count and last error.
+- Downloadable Home Assistant diagnostics include connection and tuner state while redacting the TCP host or serial device path.
+- Debug logging records transmitted commands, received responses, parsing and connection activity.
+
+### Intentional scope
+
+- Supports the **NuVo NV-T2FAM only**.
+- Creates entities for **one configurable tuner, A or B**, rather than both tuners.
+- Supports **FM only**; AM, Sirius and DAB are deliberately excluded.
+- Designed for standalone operation without NuVoNet and uses the standalone global `*ON` and `*OFF` commands.
 
 ## Install
 
@@ -28,7 +81,7 @@ Version 1.8.1 expands live diagnostics with the connection type, endpoint and fu
 
 1. In HACS, open **Integrations > Custom repositories**.
 2. Add `https://github.com/bru-living/ha-nuvo-t2fam` and select **Integration** as the category.
-3. Install **NuVo NV-T2FAM**.
+3. Search for **Bru** if the custom repository is not found under its full integration name, then install **NuVo NV-T2FAM**.
 4. Restart Home Assistant.
 
 ### Manual
@@ -63,7 +116,7 @@ This integration is designed for a tuner that is **not attached to NuVoNet**. It
 
 ## Protocol scope
 
-Commands are ASCII and CR-terminated. This integration uses global `ON`/`OFF` plus the selected tuner's `STATUS`, `FM<frequency-in-MHz>`, `SEEK+/-`, `PRESET+/-`, `CHAN`, `TITLE`, and `SRCFM`. Responses must begin with `#`; responses for the unselected tuner are ignored.
+Commands are ASCII and CR-terminated. This integration uses global `ON`/`OFF` plus the selected tuner's `STATUS`, `FM<frequency-in-MHz>`, `TUNE+/-`, `SEEK+/-`, `PRESET+/-`, `CHAN`, `TITLE`, and `SRCFM`. Responses must begin with `#`; responses for the unselected tuner are ignored.
 
 ## Troubleshooting
 

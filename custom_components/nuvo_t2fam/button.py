@@ -1,4 +1,4 @@
-"""Seek and preset buttons."""
+"""Power, tuning, seek, and preset buttons."""
 
 import asyncio
 
@@ -10,6 +10,8 @@ from .entity import NuvoEntity
 BUTTONS = (
     ("power_on", "Power on", "ON", "mdi:power", True),
     ("power_off", "Power off", "OFF", "mdi:power-off", True),
+    ("tune_up", "Tune up", "TUNE+", "mdi:plus-circle-outline", False),
+    ("tune_down", "Tune down", "TUNE-", "mdi:minus-circle-outline", False),
     ("seek_up", "Seek forward", "SEEK+", "mdi:fast-forward", False),
     ("seek_down", "Seek backward", "SEEK-", "mdi:rewind", False),
     ("preset_next", "Next preset", "PRESET+", "mdi:skip-next", False),
