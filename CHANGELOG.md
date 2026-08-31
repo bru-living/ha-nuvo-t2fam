@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## 1.8.7 - 2026-08-31
+
+- Add generated station artwork for the Home Assistant media proxy.
+- Improve station title handling for cleaner Bru Living and Home Assistant now-playing display.
+- Update integration manifest to version 1.8.7.
+
 ## 1.8.5 - 2026-08-10
 
 - Add presets 1-20 as a native media-player source selector for direct control from the more-info view.
