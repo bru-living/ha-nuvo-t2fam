@@ -282,7 +282,11 @@ class NuvoConnection:
         for callback in tuple(self._listeners):
             callback()
 
-    async def send(self, action: str) -> None:
+    def notify(self) -> None:
+        """Notify entities after catalogue state changes."""
+        self._notify()
+
+    async def send(self, action: str, *, refresh_metadata: bool = True) -> None:
         if self._writer is None:
             raise ConnectionError("NuVo tuner is not connected")
         if action.startswith(("FM", "SEEK", "TUNE")):
@@ -298,7 +302,8 @@ class NuvoConnection:
             self.state.station_name = None
             self.state.radio_text = None
             self._notify()
-            self._schedule_metadata_refresh()
+            if refresh_metadata:
+                self._schedule_metadata_refresh()
         elif action == "PRESET+":
             current = self.state.preset or 0
             self.state.preset = (current % 20) + 1
@@ -315,7 +320,7 @@ class NuvoConnection:
                 self.state.preset = number
                 self.state.preset_name = self.state.preset_names.get(number)
                 self._notify()
-        if action.startswith("PRESET"):
+        if action.startswith("PRESET") and refresh_metadata:
             self._schedule_metadata_refresh()
         data = self.command(action)
         await self._write(data)
@@ -366,5 +371,7 @@ class NuvoConnection:
             await self._writer.drain()
             self._last_write = loop.time()
 
-    async def tune(self, frequency: float) -> None:
-        await self.send(f"FM{format_frequency(frequency)}")
+    async def tune(self, frequency: float, *, refresh_metadata: bool = True) -> None:
+        await self.send(
+            f"FM{format_frequency(frequency)}", refresh_metadata=refresh_metadata
+        )

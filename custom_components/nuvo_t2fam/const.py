@@ -1,7 +1,7 @@
 """Constants for the NuVo NV-T2FAM integration."""
 
 DOMAIN = "nuvo_t2fam"
-PLATFORMS = ["media_player", "number", "button", "sensor", "select"]
+PLATFORMS = ["media_player", "number", "button", "sensor", "select", "text"]
 CONF_CONNECTION_TYPE = "connection_type"
 CONF_TUNER = "tuner"
 CONF_SERIAL_PATH = "serial_path"

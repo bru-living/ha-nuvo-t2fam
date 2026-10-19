@@ -46,4 +46,23 @@ async def async_get_config_entry_diagnostics(hass, entry):
             "preset_name": state.preset_name,
             "version": state.version,
         },
+        "local_presets": {
+            "status": connection.preset_catalog.status,
+            "scanning": connection.preset_catalog.scanning,
+            "last_scan_started": connection.preset_catalog.last_scan_started,
+            "last_scan_finished": connection.preset_catalog.last_scan_finished,
+            "last_scan_error": connection.preset_catalog.last_scan_error,
+            "stations": [
+                {
+                    "frequency": preset.frequency,
+                    "name": preset.name,
+                    "rds_name": preset.rds_name,
+                    "custom_name": preset.custom_name,
+                    "hidden": preset.hidden,
+                    "first_seen": preset.first_seen,
+                    "last_seen": preset.last_seen,
+                }
+                for preset in connection.preset_catalog.presets
+            ],
+        },
     }

@@ -1,126 +1,164 @@
 # NuVo NV-T2FAM for Home Assistant
 
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
+**Give your FM tuner a station library, friendly names and a place in your smart home.**
+
+[![HACS](https://img.shields.io/badge/HACS-Available-41BDF5.svg)](https://github.com/hacs/default)
+[![Release](https://img.shields.io/github/v/release/bru-living/ha-nuvo-t2fam)](https://github.com/bru-living/ha-nuvo-t2fam/releases/latest)
+[![Validation](https://github.com/bru-living/ha-nuvo-t2fam/actions/workflows/validate.yml/badge.svg)](https://github.com/bru-living/ha-nuvo-t2fam/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[![Open your Home Assistant instance and add this repository to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=bru-living&repository=ha-nuvo-t2fam&category=integration)
+[![Add this integration to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=bru-living&repository=ha-nuvo-t2fam&category=integration)
 
-A local, UI-configured custom integration for **one tuner (A or B)** of the NuVo NV-T2FAM. It intentionally supports FM only. It does not create AM, Sirius, DAB, or second-tuner entities.
+Bring the **NuVo NV-T2FAM** into Home Assistant with local FM tuning, RDS metadata, station artwork and a persistent station collection. Version **1.15.1** adds automatic station discovery and editable presets stored in Home Assistant, so your favourite stations are easy to find without programming the tuner's hardware banks.
 
-## Screenshots
+The integration controls **one selected tuner, A or B**, through a local serial connection or a transparent serial-over-TCP bridge. It supports **FM, 87.5–108.0 MHz**, in standalone operation without NuVoNet. A single configuration entry is supported; it does not expose both tuners simultaneously.
 
-### Device controls and connection diagnostics
+![Home Assistant controls for FM station discovery and selecting a saved station](docs/images/station-discovery.jpg)
 
-![NuVo NV-T2FAM device page showing power, frequency, seek and preset controls](docs/images/device-overview.png)
+*Station discovery and saved-station selection in Home Assistant 1.15.1.*
 
-### Media player details
+## What's new in 1.15.1
 
-![NuVo NV-T2FAM media player showing the current FM frequency and preset controls](docs/images/media-player-details.png)
+### Discover the stations around you
 
-The current release also adds a preset/source selector to the media-player details view. Home Assistant displays controls according to the available space and frontend version.
+Press **Discover FM stations** and let the tuner explore the FM band. Discovery uses the tuner's seek function and a follow-up frequency sweep to find additional stations with RDS information. The **Station discovery** sensor reports what it is doing, how many stations it has found and any errors.
 
-## Features
+Stations are saved as they are found. A later scan adds stations and refreshes RDS names while keeping your custom names and hidden-station choices. Discovery normalises fine-tune offsets to 100 kHz broadcast channels to avoid filling your list with near-duplicates.
 
-### Tuner controls
+**Scanning temporarily retunes the selected tuner and can take several minutes.** Run it when that radio source is not being listened to. At the end, the integration attempts to restore the original frequency and power state; a connection failure can prevent restoration and is reported in the discovery sensor. Reception depends on your antenna and location; stations without decodable RDS can be saved manually.
 
-| Home Assistant entity | What it provides |
+### Make the station list yours
+
+![Home Assistant station controls for saving, removing, renaming and hiding FM stations](docs/images/personal-stations.jpg)
+
+*Manage saved frequencies, station names and visibility from the device page.*
+
+| Control | What you can do |
 | --- | --- |
-| **Media player** | Power on/off, current tuner state, current frequency, RDS station name and radio text. Previous/next selects the previous/next preset, and the source selector provides direct access to presets 1-20. Numeric `media_player.play_media` calls tune directly to an FM frequency. |
-| **FM frequency number** | Direct tuning from 87.50 to 108.00 MHz in 0.01 MHz steps. |
-| **Preset select** | Direct selection of all 20 presets in preset bank 1. Learned tuner descriptions are shown as friendly names, for example `5: Radio Nova`. |
-| **Control buttons** | Power on/off, tune up/down by one FM step, seek forward/backward to the next station, and next/previous preset. Seek buttons use fast-forward/rewind icons; preset buttons use next/previous icons. |
-| **State sensors** | Current FM frequency, current preset number, preset name, RDS station name and RDS radio text. |
-| **Diagnostic sensors** | Device firmware/hardware version and live connection status. |
+| **Discovered station** | Jump straight to a saved station by its name and frequency. |
+| **Save current station** | Add a manually tuned station, including one discovery did not find. |
+| **Station name** | Give the current station a friendly name. Clear it to use RDS again. |
+| **Station frequency** | Correct the saved frequency. A change that collides with another saved channel is rejected. |
+| **Station visibility** | Hide a station from the normal station list, or show it again. |
+| **Remove current station** | Permanently remove the tuned station from the Home Assistant collection. |
 
-When a station has no RDS, the media player card falls back to the preset name or the current FM frequency instead of showing a blank title.
+These presets are stored in Home Assistant and survive restarts. They are separate from the NV-T2FAM's **20 hardware preset slots in bank 1**; station discovery does not reprogram those slots. Your custom names take priority over abbreviated RDS labels.
 
-The controls deliberately distinguish between:
+For **Station visibility**, choose the station's `Visible:` or `Hidden:` entry to toggle its visibility. Hidden stations remain in the visibility control so you can bring them back.
 
-- **Tune up/down**: move by one tuner frequency step using `TUNE+` or `TUNE-`.
-- **Seek forward/backward**: scan to the next receivable FM station using `SEEK+` or `SEEK-`.
-- **Previous/next**: move through the tuner's stored presets using `PRESET-` or `PRESET+`.
+### Browse favourites from the media player
 
-### RDS and preset handling
+Once visible local stations exist, they appear in the media player's **source selector**. **Next** and **Previous** move through that collection in frequency order, wrapping at the ends. Before you have visible local stations, those controls use hardware presets instead.
 
-- Parses both command responses and unsolicited tuner updates.
-- Shows the RDS station name and radio text on the media player and as separate sensors.
-- Falls back to the learned preset name or exact FM frequency when a station supplies no RDS.
-- Polls RDS repeatedly after tuning, seeking or changing preset because some stations and tuners take time to return metadata.
-- Keeps valid RDS data when the tuner briefly returns an empty response.
-- Caches RDS by frequency so known station information can be restored when returning to a station during rapid preset changes.
-- Learns preset descriptions as each preset is tuned and uses them as friendly names in the preset dropdown.
-- Updates preset state immediately while waiting for the tuner response, making repeated preset changes responsive.
+The separate **Hardware preset** selector and preset buttons continue to control the tuner's bank-1 presets. Tune/seek buttons remain available for exploring beyond your saved collection.
 
-### Connections and reliability
+### Artwork that follows your station names
 
-- UI configuration for either a raw serial-over-TCP bridge or a local serial device.
-- Compatible with transparent TCP serial bridges, including suitably configured Global Caché devices.
-- Uses the NV-T2FAM serial settings: ASCII, 57600 baud, 8 data bits, no parity, 1 stop bit, no flow control, and carriage-return command termination.
-- Tests the endpoint with `*VER` during initial setup, reconfiguration and Home Assistant startup, and requires an NV-T2FAM version response.
-- Reconfigure flow for changing TCP host/port, serial device path, or selected tuner without removing the integration.
-- Serialized and paced command writes for reliable operation through slower serial-over-TCP bridges.
-- Automatic reconnection with backoff, response monitoring, and silent-connection detection.
+The media player looks up station logos using the editable local station name, falling back to RDS or the hardware preset description. This lets a useful name drive artwork matching before RDS arrives. If a logo is unavailable, the integration provides generated station artwork through Home Assistant's media proxy.
 
-### Diagnostics and troubleshooting
+Logo lookup currently searches **Irish stations** in the [Radio Browser directory](https://www.radio-browser.info/). It needs internet access and sends the station name to that service; logo images may load from third-party station hosts. **Tuning, RDS and local preset storage remain local.** This integration controls an FM receiver; artwork lookup does not turn it into an internet-radio player.
 
-- A connection-status sensor remains available while disconnected.
-- Live diagnostic attributes include connection type, TCP host/port or serial path, tuner, serial settings, connection timestamps, last response, reconnect count and last error.
-- Downloadable Home Assistant diagnostics include connection and tuner state while redacting the TCP host or serial device path.
-- Debug logging records transmitted commands, received responses, parsing and connection activity.
+## Everyday controls
 
-### Intentional scope
+| Entity | Function |
+| --- | --- |
+| **Media player** | Power, current station, frequency, RDS radio text, artwork, source selection and previous/next. |
+| **FM frequency** | Direct tuning from 87.50 to 108.00 MHz in 0.01 MHz steps. |
+| **Tune up / Tune down** | Step the tuner with `TUNE+` / `TUNE-`. |
+| **Seek forward / Seek backward** | Find the next receivable station with `SEEK+` / `SEEK-`. |
+| **Hardware preset** | Select one of the 20 presets in bank 1, with descriptions learned as they are reported. |
+| **State sensors** | Frequency, hardware preset number and name, RDS station name and radio text. |
+| **Station discovery sensor** | Discovery status, saved stations, scan timestamps and error details. |
+| **Diagnostics** | Firmware/hardware version, connection state and reconnect information. |
 
-- Supports the **NuVo NV-T2FAM only**.
-- Creates entities for **one configurable tuner, A or B**, rather than both tuners.
-- Supports **FM only**; AM, Sirius and DAB are deliberately excluded.
-- Designed for standalone operation without NuVoNet and uses the standalone global `*ON` and `*OFF` commands.
+RDS is read again after tuning and cached by frequency. Empty RDS responses preserve valid metadata, and the card falls back to a station label or frequency when there is no station text.
 
-## Install
+### Home Assistant views
 
-### HACS custom repository
+These screenshots show the core device controls and media-player view. Available controls and layout vary with your Home Assistant frontend; the new station-management entities are described above.
 
-1. In HACS, open **Integrations > Custom repositories**.
-2. Add `https://github.com/bru-living/ha-nuvo-t2fam` and select **Integration** as the category.
-3. Search for **Bru** if the custom repository is not found under its full integration name, then install **NuVo NV-T2FAM**.
-4. Restart Home Assistant.
+![Core NV-T2FAM device controls and connection diagnostics](docs/images/device-overview.png)
 
-### Manual
+![NV-T2FAM media-player details](docs/images/media-player-details.png)
 
-Copy `custom_components/nuvo_t2fam` into the `custom_components` directory under your Home Assistant configuration directory, then restart Home Assistant.
+## Install with HACS
 
-## Configure
+The integration is included in the default HACS catalogue.
 
-Open **Settings > Devices & services > Add integration**, search for **NuVo NV-T2FAM**, then choose:
+1. Open **HACS** and search for **NuVo NV-T2FAM**.
+2. Download the integration and restart Home Assistant.
+3. Open **Settings → Devices & services → Add integration** and search for **NuVo NV-T2FAM**.
+4. Choose your connection and tuner, then finish setup.
 
-- **TCP**: hostname/IP and raw TCP port (often 4999; use the value configured on your bridge).
-- **Serial**: local path such as `/dev/ttyUSB0`.
-- **Tuner**: A or B. Only the selected tuner gets entities.
+You can also use the **Add to HACS** button above. If needed, add `https://github.com/bru-living/ha-nuvo-t2fam` under **Custom repositories** with category **Integration**.
 
-Configure the bridge for transparent/raw TCP, ASCII, 57600 baud, 8 data bits, no parity, 1 stop bit, and no flow control.
+### Manual installation
 
-The setup and every Home Assistant startup send `*VER` and require the endpoint to identify itself as an `NV-T2FAM` before the integration loads.
+Download the ZIP attached to the [latest release](https://github.com/bru-living/ha-nuvo-t2fam/releases/latest). Copy its `custom_components/nuvo_t2fam` folder into your Home Assistant configuration directory:
 
-## Change the connection
+```text
+/config/custom_components/nuvo_t2fam/
+```
 
-Open **Settings > Devices & services > NuVo NV-T2FAM**, use the three-dot menu, and select **Reconfigure**. Change the serial device path (or TCP host/port) and tuner. Home Assistant tests the new endpoint with `*VER` before saving it, then reloads the integration automatically.
+Restart Home Assistant, then add the integration from **Settings → Devices & services**.
 
-Set a station with the **FM frequency** number entity or call `media_player.play_media` with a numeric MHz content ID, for example `99.9`.
+## Connect your tuner
 
-## Named preset favourites
+| Option | Setting |
+| --- | --- |
+| **TCP** | Hostname/IP and raw TCP port of your serial bridge; the default port is 4999. |
+| **Serial** | Local device path, for example `/dev/ttyUSB0`. |
+| **Tuner** | A or B. Only the chosen tuner receives entities. |
 
-When the tuner reports a preset, the integration reads its built-in description and uses it in the Preset dropdown, such as **5: Radio Nova**. Names are learned as presets are tuned because the NV-T2FAM protocol does not provide a command to list every preset description at once. Presets not yet reported remain labelled **Preset 1**, **Preset 2**, and so on.
+Serial settings are **57600 baud, 8 data bits, no parity, 1 stop bit, no flow control**, with ASCII commands terminated by a carriage return. A TCP bridge must provide a transparent/raw serial connection; suitably configured Global Caché devices can be used.
 
-## Standalone operation
+Setup, reconfiguration and startup request `*VER` and require an NV-T2FAM response. Command writes are paced and serialised, with automatic reconnection, backoff and silent-connection monitoring.
 
-This integration is designed for a tuner that is **not attached to NuVoNet**. It uses the protocol's standalone global `*ON` and `*OFF` commands. NuVoNet operation is intentionally unsupported.
+To change the endpoint or selected tuner, open the integration's three-dot menu and choose **Reconfigure**. The replacement connection is tested before it is saved.
 
-## Protocol scope
+## First station collection
 
-Commands are ASCII and CR-terminated. This integration uses global `ON`/`OFF` plus the selected tuner's `STATUS`, `FM<frequency-in-MHz>`, `TUNE+/-`, `SEEK+/-`, `PRESET+/-`, `CHAN`, `TITLE`, and `SRCFM`. Responses must begin with `#`; responses for the unselected tuner are ignored.
+1. Open the NV-T2FAM device page.
+2. Press **Discover FM stations** when the tuner can be temporarily retuned.
+3. Follow **Station discovery** until the scan finishes.
+4. Choose a **Discovered station**, then adjust its **Station name** if needed.
+5. Hide unwanted stations using **Station visibility**.
+6. Tune any missing frequency manually and press **Save current station**.
 
-## Troubleshooting
+Your chosen names now appear in the media player's source list and guide station-logo matching. No hardware preset programming is required.
 
-Enable debug logging:
+## Use it in automations
+
+Tune a frequency directly with the standard media-player action. Replace the example entity ID with yours:
+
+```yaml
+action: media_player.play_media
+target:
+  entity_id: media_player.nuvo_nv_t2fam_tuner_a
+data:
+  media_content_type: music
+  media_content_id: "98.0"
+```
+
+Use `media_player.select_source` with the **exact station label shown in your source list**, or use `select.select_option` on the discovered-station entity. These are standard Home Assistant entities, so you can include them in scenes, scripts and room routines.
+
+The tuner integration controls the radio source. Routing that source to rooms and setting amplifier volume are handled by your separate NuVo matrix or amplifier integration.
+
+## Upgrading from 1.8.7
+
+- Existing connection settings and entity identifiers are retained. The old preset selector is now labelled **Hardware preset**.
+- Discovery is manual: upgrading does not automatically scan or reprogram the tuner.
+- Once visible local stations exist, media-player source labels and Next/Previous use that collection. **Review automations that select numeric hardware preset labels**; the separate Hardware preset selector remains available.
+- Local presets live in Home Assistant's managed storage. Include your configuration and managed storage in backups.
+- Restart Home Assistant after updating integration files.
+
+## Scope and troubleshooting
+
+This integration supports **FM on one NV-T2FAM tuner in standalone mode**. AM, Sirius, DAB and NuVoNet operation are outside its scope. Power uses the standalone global `*ON` and `*OFF` commands, which affect the physical tuner unit.
+
+Download diagnostics from the integration page to inspect connection and station-discovery details. Host/path values are redacted in downloaded diagnostics. The connection-status sensor stays available during disconnection and includes timestamps, reconnect counts and the last error.
+
+For debug logging:
 
 ```yaml
 logger:
@@ -128,6 +166,8 @@ logger:
     custom_components.nuvo_t2fam: debug
 ```
 
-Download diagnostics from the integration page; host/path values are redacted.
+Check the serial settings, bridge port and selected tuner first. If scanning fails, inspect **Station discovery** and the connection sensor. A full-band sweep adds stations when it receives RDS, so weak reception or absent RDS may require manual tuning and **Save current station**.
 
-Report problems through the [GitHub issue tracker](https://github.com/bru-living/ha-nuvo-t2fam/issues). Remove credentials and public addresses from logs before posting them.
+Report problems in the [issue tracker](https://github.com/bru-living/ha-nuvo-t2fam/issues). Remove credentials and public addresses from logs before sharing them.
+
+See the [changelog](CHANGELOG.md) for release history and [contributing guide](CONTRIBUTING.md) for development information.
