@@ -58,7 +58,8 @@ def test_parse_rds():
 
 def test_empty_rds_does_not_erase_valid_data():
     state = TunerState(station_name="98FM", radio_text="Now playing")
-    assert not parse_response("#T'A'CHAN\"\"", "A", state)
+    assert parse_response("#T'A'CHAN\"\"", "A", state)
+    assert state.powered is True
     assert not parse_response("#T'A'TITLE\"\"", "A", state)
     assert state.station_name == "98FM"
     assert state.radio_text == "Now playing"

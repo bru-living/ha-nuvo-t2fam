@@ -60,6 +60,12 @@ SENSORS = (
         icon="mdi:information-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+    NuvoSensorDescription(
+        key="station_discovery",
+        name="Station discovery",
+        icon="mdi:radio-tower",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
 )
 
 
@@ -86,6 +92,8 @@ class NuvoStateSensor(NuvoEntity, SensorEntity):
     def native_value(self) -> Any:
         if self.description.key == "connection_status":
             return "Connected" if self.connection.state.available else "Disconnected"
+        if self.description.key == "station_discovery":
+            return self.connection.preset_catalog.status
         return getattr(self.connection.state, self.description.key)
 
     @property
@@ -96,6 +104,17 @@ class NuvoStateSensor(NuvoEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self):
+        if self.description.key == "station_discovery":
+            catalog = self.connection.preset_catalog
+            return {
+                "scanning": catalog.scanning,
+                "preset_count": len(catalog.presets),
+                "found_this_scan": catalog.last_scan_found,
+                "last_scan_started": catalog.last_scan_started,
+                "last_scan_finished": catalog.last_scan_finished,
+                "last_scan_error": catalog.last_scan_error,
+                "stations": [preset.label for preset in catalog.presets],
+            }
         if self.description.key != "connection_status":
             return None
         state = self.connection.state

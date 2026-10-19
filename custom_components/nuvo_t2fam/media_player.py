@@ -81,6 +81,14 @@ def _normalise_station_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]", "", value.casefold())
 
 
+def _station_directory_name(value: str) -> str:
+    """Remove frequency and transmitter notes before a logo-directory lookup."""
+    name = re.sub(r"\s*\([^)]*\)\s*$", "", value).strip()
+    name = re.sub(r"^\d{2,3}(?:\.\d+)?\s+", "", name).strip()
+    name = re.sub(r"\s+\d{2,3}(?:\.\d+)?$", "", name).strip()
+    return name or value.strip()
+
+
 async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities([NuvoMediaPlayer(entry, hass.data[DOMAIN][entry.entry_id])])
 
@@ -111,9 +119,15 @@ class NuvoMediaPlayer(NuvoEntity, MediaPlayerEntity):
         )
         self._schedule_station_logo_refresh()
 
+    def _station_label(self) -> str | None:
+        """Prefer the editable Home Assistant preset name over noisy RDS text."""
+        state = self.connection.state
+        local = self.connection.preset_catalog.preset_for_frequency(state.frequency)
+        return (local.name if local else None) or state.station_name or state.preset_name
+
     def _schedule_station_logo_refresh(self) -> None:
         """Schedule a non-blocking station-logo lookup."""
-        label = self.connection.state.station_name
+        label = self._station_label()
         if label == self._logo_label:
             return
         self._logo_label = label
@@ -126,7 +140,8 @@ class NuvoMediaPlayer(NuvoEntity, MediaPlayerEntity):
 
     async def _async_refresh_station_logo(self, label: str) -> None:
         """Find the closest Irish station logo in the Radio Browser directory."""
-        key = _normalise_station_name(label)
+        directory_name = _station_directory_name(label)
+        key = _normalise_station_name(directory_name)
         if key in self._station_logos:
             logo_url = self._station_logos[key]
         else:
@@ -136,7 +151,7 @@ class NuvoMediaPlayer(NuvoEntity, MediaPlayerEntity):
                 async with session.get(
                     "https://all.api.radio-browser.info/json/stations/search",
                     params={
-                        "name": label,
+                        "name": directory_name,
                         "countrycode": "IE",
                         "hidebroken": "true",
                         "order": "votes",
@@ -167,7 +182,7 @@ class NuvoMediaPlayer(NuvoEntity, MediaPlayerEntity):
                 _LOGGER.debug("Station logo lookup failed for %s: %s", label, err)
             self._station_logos[key] = logo_url
 
-        if self.connection.state.station_name == label:
+        if self._station_label() == label:
             self._logo_url = logo_url
             self.async_write_ha_state()
 
@@ -184,9 +199,11 @@ class NuvoMediaPlayer(NuvoEntity, MediaPlayerEntity):
     @property
     def media_title(self):
         state = self.connection.state
+        local = self.connection.preset_catalog.preset_for_frequency(state.frequency)
         return (
             state.radio_text
             or state.station_name
+            or (local.name if local else None)
             or state.preset_name
             or _frequency_label(state.frequency)
             or "FM radio"
@@ -200,7 +217,7 @@ class NuvoMediaPlayer(NuvoEntity, MediaPlayerEntity):
     def media_artist(self):
         state = self.connection.state
         if state.radio_text:
-            return state.station_name or state.preset_name
+            return self._station_label()
         return None
 
     @property
@@ -214,11 +231,9 @@ class NuvoMediaPlayer(NuvoEntity, MediaPlayerEntity):
 
     def _artwork_label(self) -> str:
         """Return the best stable station label for generated artwork."""
-        state = self.connection.state
         return (
-            state.station_name
-            or state.preset_name
-            or _frequency_label(state.frequency)
+            self._station_label()
+            or _frequency_label(self.connection.state.frequency)
             or "FM radio"
         )
 
@@ -250,11 +265,19 @@ class NuvoMediaPlayer(NuvoEntity, MediaPlayerEntity):
 
     @property
     def source_list(self):
-        """Expose all bank-one presets in the media-player controls."""
+        """Expose HA-local presets, with hardware presets as a fallback."""
+        local = self.connection.preset_catalog.visible_presets
+        if local:
+            return [preset.label for preset in local]
         return [self._preset_label(number) for number in range(1, 21)]
 
     @property
     def source(self):
+        local = self.connection.preset_catalog.preset_for_frequency(
+            self.connection.state.frequency
+        )
+        if local:
+            return local.label
         preset = self.connection.state.preset
         return self._preset_label(preset) if preset is not None else None
 
@@ -265,6 +288,8 @@ class NuvoMediaPlayer(NuvoEntity, MediaPlayerEntity):
             "frequency_mhz": state.frequency,
             "rds_station_name": state.station_name,
             "rds_radio_text": state.radio_text,
+            "local_preset_count": len(self.connection.preset_catalog.presets),
+            "station_discovery_status": self.connection.preset_catalog.status,
         }
 
     async def async_turn_on(self):
@@ -284,13 +309,21 @@ class NuvoMediaPlayer(NuvoEntity, MediaPlayerEntity):
         await self.connection.tune(float(media_id))
 
     async def async_media_next_track(self):
+        if await self.connection.preset_catalog.async_step(1):
+            return
         await self.connection.send("PRESET+")
 
     async def async_media_previous_track(self):
+        if await self.connection.preset_catalog.async_step(-1):
+            return
         await self.connection.send("PRESET-")
 
     async def async_select_source(self, source: str):
-        """Tune directly to the selected bank-one preset."""
+        """Tune a local discovered station or a legacy hardware preset."""
+        local = self.connection.preset_catalog.preset_for_label(source)
+        if local:
+            await self.connection.tune(local.frequency)
+            return
         number = (
             int(source.split(":", 1)[0])
             if ":" in source

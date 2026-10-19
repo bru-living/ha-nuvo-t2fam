@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here.
 
+## 1.15.1 - 2026-10-19
+
+- Add persistent Home Assistant station discovery and local presets, independent of the tuner hardware banks.
+- Add station save/remove, visibility, editable names and frequency correction controls.
+- Normalise discovered FM frequencies and preserve station and power state after scanning.
+- Prefer editable station names for station-logo lookup and now-playing labels.
+- Use discovered stations for media-player sources and Next/Previous, retaining hardware presets as a fallback.
+- Expand the README with setup, station-management guidance, upgrade notes and screenshots of the new station controls.
+- Add automated protocol tests to CI and correct a pre-existing empty-RDS test expectation.
+
+Compatibility: once local stations exist, the media-player source list uses their station labels. Automations depending on numeric hardware preset labels should be reviewed. Station-logo lookup contacts the external Radio Browser directory and currently searches Irish stations.
+
 ## 1.8.7 - 2026-08-31
 
 - Add generated station artwork for the Home Assistant media proxy.
