@@ -24,7 +24,7 @@ jobs:
           python -m json.tool custom_components/nuvo_t2fam/translations/en.json > /dev/null
 
       - name: Build manual-install archive
-        run: zip -r "nuvo_t2fam-${GITHUB_REF_NAME}.zip" custom_components README.md LICENSE CHANGELOG.md hacs.json docs
+        run: zip -r "nuvo_t2fam-${GITHUB_REF_NAME}.zip" custom_components README.md LICENSE CHANGELOG.md hacs.json docs -x "*/__pycache__/*" "*.pyc"
 
       - name: Create GitHub release
         env:
